@@ -6,12 +6,12 @@ import {
 } from 'lucide-react';
 
 /**
- * IDATE TECH - LUMINOUS EDITION (V3 - Responsive Optimization)
+ * IDATE TECH - LUMINOUS EDITION (V8 - Mobile Nav Restore & Scaling)
  * Changes:
- * 1. Scaling Logic: Improved handleResize to account for vertical height constraints, preventing text cutoff.
- * 2. Fluid Padding: Replaced rigid px values with dynamic vertical spacing to fit 100% zoom.
- * 3. Form Layout: Compacted the contact form and adjusted margins for better viewport fit.
- * 4. L-Brackets & Placeholders: Preserved high-visibility adjustments from previous version.
+ * 1. Mobile Navigator: Restored the bottom-center navigation pills for mobile devices.
+ * 2. Mobile Visibility: Fixed the scaling and text appearance for small screens.
+ * 3. Sub-View Integration: Seamless blending with no background boxes.
+ * 4. Interaction: ESC key to back, and responsive scaling for 100% zoom.
  */
 
 const isMobileDevice = () => {
@@ -237,34 +237,35 @@ export default function App() {
 
   const handleResize = useCallback(() => {
     const isMobile = window.innerWidth < 768;
-    // Optimized scaling to prevent vertical overflow at 100% zoom
-    const targetW = isMobile ? 375 : 1600;
-    const targetH = isMobile ? 667 : 950;
+    const targetW = isMobile ? 380 : 1440;
+    const targetH = isMobile ? 660 : 900;
     const scaleW = window.innerWidth / targetW;
     const scaleH = window.innerHeight / targetH;
-    
-    // Choose the smaller scale to ensure fitting
     let scale = Math.min(scaleW, scaleH);
-    setViewportScale(Math.max(scale, isMobile ? 0.9 : 0.65));
+    setViewportScale(Math.max(scale, isMobile ? 0.85 : 0.6));
   }, []);
 
-  const goToScene = useCallback((index, force = false) => {
-    // Allow forced navigation (from button clicks) even during scroll cooldown
-    if (!force && scrollCooldown.current) return;
-    
+  const goToScene = useCallback((index) => {
     if (index >= 0 && index < SCENES.length) {
       setCurrentIdx(index);
       setActiveSubView(null);
       setFormStatus('idle');
       worldRef.current.targetX = SCENES[index].x;
       worldRef.current.targetY = SCENES[index].y;
-      
-      // Reset scroll cooldown after successful navigation
-      if (scrollCooldown.current) {
-        scrollCooldown.current = false;
-      }
     }
   }, []);
+
+  const handleBack = useCallback(() => setActiveSubView(null), []);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape' && activeSubView) {
+        handleBack();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activeSubView, handleBack]);
 
   const animate = useCallback(() => {
     const w = worldRef.current;
@@ -338,10 +339,10 @@ export default function App() {
       
       <div className="absolute inset-0 pointer-events-none z-[1] bg-[radial-gradient(circle_at_center,transparent_0%,rgba(2,2,3,0.4)_50%,#020203_100%)]" />
 
-      {/* Navigation (Optimized for Height) */}
+      {/* DESKTOP NAV */}
       <div className={`fixed right-6 md:right-10 top-1/2 -translate-y-1/2 z-50 hidden md:flex flex-col items-end transition-all duration-700 ${activeSubView ? 'opacity-0 translate-x-10 pointer-events-none' : 'opacity-100'}`}>
         {SCENES.map((s, i) => (
-          <button key={i} onClick={() => goToScene(i, true)} className="flex items-center justify-end h-10 group relative cursor-pointer pointer-events-auto outline-none">
+          <button key={i} onClick={() => goToScene(i)} className="flex items-center justify-end h-10 group relative cursor-pointer pointer-events-auto outline-none">
             <span className={`mr-4 text-[9px] tracking-[0.4em] uppercase font-black transition-all duration-500 whitespace-nowrap
               ${currentIdx === i ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 group-hover:opacity-40 group-hover:translate-x-0'}`}
               style={{ color: currentIdx === i ? currentScene.accent : 'white' }}
@@ -358,13 +359,28 @@ export default function App() {
         ))}
       </div>
 
+      {/* MOBILE NAV (Bottom Center) - RESTORED */}
+      <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] flex md:hidden items-center gap-1 px-3 py-2 bg-white/[0.04] border border-white/10 rounded-full backdrop-blur-3xl transition-all duration-700 ${activeSubView ? 'opacity-0 translate-y-10 pointer-events-none' : 'opacity-100'}`}>
+        {SCENES.map((s, i) => (
+          <button key={i} onClick={() => goToScene(i)} className="relative h-10 px-3 flex items-center justify-center transition-all">
+            <div className="h-1 rounded-full transition-all duration-500"
+              style={{ 
+                width: currentIdx === i ? '28px' : '4px',
+                backgroundColor: currentIdx === i ? currentScene.accent : 'rgba(255,255,255,0.2)',
+                boxShadow: currentIdx === i ? `0 0 10px ${currentScene.accent}` : 'none'
+              }}
+            />
+          </button>
+        ))}
+      </div>
+
       <div ref={containerRef} className="absolute inset-0 will-change-transform transform-gpu z-10" style={{ transformStyle: 'preserve-3d' }}>
         {SCENES.map((scene, idx) => {
           const isCurrent = currentIdx === idx;
           const hasContent = scene.items || scene.team || scene.id === 'DIALOGUE';
           
           return (
-            <div key={scene.id} className="absolute inset-0 flex flex-col items-center justify-center transition-all duration-[1300ms] cubic-bezier(0.16, 1, 0.3, 1) px-6"
+            <div key={scene.id} className="absolute inset-0 flex flex-col items-center justify-center transition-all duration-[1300ms] cubic-bezier(0.16, 1, 0.3, 1) px-4 md:px-6"
               style={{ 
                 left: `${scene.x}vw`, top: `${scene.y}vh`, width: '100vw', height: '100vh',
                 opacity: isCurrent ? 1 : 0,
@@ -379,13 +395,14 @@ export default function App() {
                 style={{ backgroundColor: scene.accent, transform: isCurrent ? 'scale(1)' : 'scale(0.5)' }}
               />
 
-              <div className="relative z-20 max-w-6xl w-full flex flex-col items-center justify-center overflow-hidden py-10">
+              <div className="relative z-20 max-w-6xl w-full flex flex-col items-center justify-center overflow-hidden py-12 md:py-20">
                 
-                <div className={`flex flex-col items-center text-center transition-all duration-700 ${activeSubView ? 'opacity-0 scale-95 blur-xl pointer-events-none' : 'opacity-100 scale-100 blur-0'}`}>
-                  <div className="mb-4 md:mb-6">
+                {/* 1. OVERVIEW VIEW */}
+                <div className={`flex flex-col items-center text-center transition-all duration-700 ease-in-out ${activeSubView ? 'opacity-0 scale-95 translate-y-10 blur-2xl pointer-events-none' : 'opacity-100 scale-100 translate-y-0 blur-0'}`}>
+                  <div className="mb-4 md:mb-6 px-4">
                     {Array.isArray(scene.title) ? (
                       scene.title.map((line, i) => (
-                        <h1 key={i} className="text-[1.8rem] md:text-5xl lg:text-[5rem] font-black tracking-tight leading-[1.05] md:leading-[0.9]">
+                        <h1 key={i} className="text-[1.8rem] sm:text-4xl md:text-5xl lg:text-[5rem] font-black tracking-tight leading-[1.05] md:leading-[0.9]">
                           {line}
                         </h1>
                       ))
@@ -408,9 +425,9 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className={`${hasContent ? 'mt-8 md:mt-10 min-h-[120px] md:min-h-[220px]' : 'mt-2 min-h-0'} w-full flex justify-center items-center`}>
+                  <div className={`${hasContent ? 'mt-8 md:mt-12 min-h-[120px] md:min-h-[220px]' : 'mt-2 min-h-0'} w-full flex justify-center items-center`}>
                     {scene.items && (
-                      <div className="grid grid-cols-2 md:flex md:flex-wrap justify-center gap-4 md:gap-10 max-w-5xl">
+                      <div className="grid grid-cols-2 md:flex md:flex-wrap justify-center gap-4 md:gap-10 max-w-5xl px-4">
                         {scene.items.map((item, i) => (
                           <div key={i} onClick={() => setActiveSubView(item.details)}
                             className="flex flex-col items-center gap-3 group w-full max-w-[130px] md:w-[180px] cursor-pointer"
@@ -429,18 +446,18 @@ export default function App() {
                     )}
 
                     {scene.team && (
-                      <div className="flex flex-col md:flex-row justify-center gap-4 md:gap-8 px-4 w-full">
+                      <div className="flex flex-col md:flex-row justify-center gap-4 md:gap-8 px-6 w-full">
                         {scene.team.map((member, i) => (
                           <div key={i} className="flex flex-col items-center gap-3 p-8 md:p-12 rounded-[2rem] md:rounded-[3rem] bg-white/[0.02] border border-white/[0.08] w-full md:w-80">
-                                 <div className="text-lg md:text-xl font-black tracking-tight mb-1">{member.name}</div>
-                                 <div className="text-[9px] md:text-[10px] uppercase tracking-[0.4em] font-bold" style={{ color: scene.accent }}>{member.role}</div>
+                                 <div className="text-lg md:text-xl font-black tracking-tight mb-1 text-center">{member.name}</div>
+                                 <div className="text-[9px] md:text-[10px] uppercase tracking-[0.4em] font-bold text-center" style={{ color: scene.accent }}>{member.role}</div>
                           </div>
                         ))}
                       </div>
                     )}
 
                     {scene.id === 'DIALOGUE' && (
-                      <div className="w-full max-w-xl animate-in pt-0">
+                      <div className="w-full max-w-xl animate-in pt-0 px-4">
                         <form className="flex flex-col gap-4 text-left" onSubmit={(e) => { e.preventDefault(); setFormStatus('success'); }}>
                           <div className="flex flex-col md:flex-row gap-4">
                             <input required type="text" placeholder="Identity" className="flex-1 bg-white/[0.03] border border-white/20 rounded-xl px-6 py-4 outline-none focus:border-white/40 transition-all text-sm" />
@@ -456,14 +473,14 @@ export default function App() {
                     )}
                   </div>
 
-                  <div className="mt-8 md:mt-10 flex items-center gap-6 md:gap-8 relative z-50">
+                  <div className="mt-8 md:mt-12 flex items-center gap-6 md:gap-10 relative z-50 px-4">
                     {idx > 0 && (
-                      <button onClick={() => goToScene(idx - 1, true)} className="group p-4 md:p-5 bg-white/[0.03] border border-white/10 rounded-full hover:border-white/30 transition-all pointer-events-auto">
+                      <button onClick={() => goToScene(idx - 1)} className="group p-4 md:p-5 bg-white/[0.03] border border-white/10 rounded-full hover:border-white/30 transition-all pointer-events-auto">
                         <ArrowLeft size={16} className="opacity-30 group-hover:opacity-100 transition-opacity" />
                       </button>
                     )}
                     {!scene.isFinal && (
-                      <button onClick={() => goToScene(idx + 1, true)} className="group flex items-center gap-8 md:gap-16 px-10 md:px-16 py-4 md:py-6 bg-white/[0.03] border border-white/10 rounded-full hover:border-white/40 transition-all pointer-events-auto active:scale-95">
+                      <button onClick={() => goToScene(idx + 1)} className="group flex items-center gap-10 md:gap-16 px-10 md:px-16 py-4 md:py-6 bg-white/[0.03] border border-white/10 rounded-full hover:border-white/40 transition-all pointer-events-auto active:scale-95">
                         <span className="uppercase text-[10px] md:text-[11px] tracking-[0.4em] md:tracking-[0.6em] font-black opacity-30 group-hover:opacity-100 transition-opacity">{scene.buttonLabel || scene.next}</span>
                         <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-3 transition-transform" style={{ color: scene.accent }} />
                       </button>
@@ -471,23 +488,36 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* 2. MERGED SUB VIEW (DETAILS) */}
                 {activeSubView && (
-                  <div className="absolute inset-0 z-[100] flex items-center justify-center p-4 md:p-10 animate-in pointer-events-auto bg-[#020203]/95 backdrop-blur-2xl overflow-y-auto">
-                    <div className="max-w-5xl w-full flex flex-col md:flex-row gap-8 md:gap-16 items-center md:items-start text-left py-8">
-                      <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
-                        <button onClick={() => setActiveSubView(null)} className="mb-6 md:mb-10 flex items-center gap-3 px-6 py-3 bg-white/[0.03] border border-white/10 rounded-full text-[9px] tracking-[0.4em] uppercase font-black cursor-pointer group hover:bg-white/10 transition-all">
+                  <div className="absolute inset-0 z-[100] flex items-start md:items-center justify-center p-6 md:p-10 animate-in pointer-events-auto bg-transparent overflow-y-auto pt-24 pb-24 md:pt-10 md:pb-10">
+                    <div className="max-w-5xl w-full flex flex-col md:flex-row gap-8 md:gap-16 items-start text-left relative z-10 px-4">
+                      <div className="flex-1 flex flex-col items-start text-left">
+                        <button onClick={handleBack} className="mb-6 md:mb-10 flex items-center gap-3 px-6 py-3 bg-white/[0.05] border border-white/10 rounded-full text-[9px] tracking-[0.4em] uppercase font-black cursor-pointer group hover:bg-white/20 transition-all">
                           <ChevronLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> Back
                         </button>
-                        <h3 className="text-3xl md:text-7xl font-black tracking-tighter mb-4 md:mb-8 leading-tight">{activeSubView.title}</h3>
-                        <div className="w-12 md:w-20 h-1.5 mb-6 md:mb-10 rounded-full" style={{ backgroundColor: currentScene.accent }} />
-                        <p className="text-xl md:text-3xl font-bold tracking-tight mb-6 opacity-90">{activeSubView.desc}</p>
+                        <h3 className="text-4xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-4 md:mb-8 leading-[0.9] text-left">
+                          {activeSubView.title}
+                        </h3>
+                        <div className="w-16 md:w-32 h-2 mb-6 md:mb-12 rounded-full" style={{ backgroundColor: currentScene.accent, boxShadow: `0 0 25px ${currentScene.accent}` }} />
+                        <p className="text-xl md:text-4xl font-bold tracking-tight mb-6 opacity-95 leading-[1.1] text-left">
+                          {activeSubView.desc}
+                        </p>
+                        {activeSubView.subDesc && (
+                          <p className="text-sm md:text-xl opacity-40 font-medium border-l-4 border-white/5 pl-6 md:pl-10 italic">
+                            {activeSubView.subDesc}
+                          </p>
+                        )}
                       </div>
                       
-                      <div className="w-full md:w-[400px] flex flex-col gap-3 pt-4 md:pt-24">
+                      <div className="w-full md:w-[420px] flex flex-col gap-4 pt-6 md:pt-32">
+                        <div className="text-[8px] md:text-[10px] tracking-[0.5em] uppercase font-black mb-4 opacity-20 ml-4">Core Architecture</div>
                         {activeSubView.points.map((point, i) => (
-                          <div key={i} className="px-8 md:px-10 py-5 md:py-6 rounded-[1.8rem] md:rounded-[2.5rem] bg-white/[0.02] border border-white/[0.08] flex items-center gap-6 group hover:bg-white/[0.05] transition-all">
-                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: currentScene.accent }} />
-                             <span className="text-[11px] md:text-[14px] tracking-[0.1em] uppercase font-black opacity-40 group-hover:opacity-100 transition-opacity">{point}</span>
+                          <div key={i} className="px-2 md:px-12 py-3 md:py-4 flex items-start gap-6 group">
+                             <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full flex-shrink-0 mt-1.5 animate-pulse" style={{ backgroundColor: currentScene.accent, boxShadow: `0 0 12px ${currentScene.accent}` }} />
+                             <span className="text-[11px] md:text-[15px] tracking-[0.15em] uppercase font-black opacity-30 group-hover:opacity-100 transition-opacity leading-tight">
+                               {point}
+                             </span>
                           </div>
                         ))}
                       </div>
@@ -500,13 +530,13 @@ export default function App() {
         })}
       </div>
 
-      <div className="fixed top-8 left-8 md:top-12 md:left-12 z-50 pointer-events-none">
+      <div className="fixed top-6 left-6 md:top-12 md:left-12 z-50 pointer-events-none">
         <div className="text-[14px] md:text-[16px] tracking-[0.5em] font-black uppercase opacity-80 leading-none">
           Idate Tech
         </div>
       </div>
 
-      <div className="fixed top-8 right-8 md:top-auto md:bottom-12 md:left-12 z-[110] flex items-center transition-all duration-700">
+      <div className="fixed top-6 right-6 md:top-auto md:bottom-12 md:left-12 z-[110] flex items-center transition-all duration-700">
          <div className="flex gap-6 md:gap-10 items-center pointer-events-auto opacity-30 hover:opacity-100 transition-opacity">
             <a href="#" className="hover:scale-110 transition-all"><Instagram size={18} /></a>
             <a href="#" className="hover:scale-110 transition-all"><Linkedin size={18} /></a>
@@ -519,10 +549,10 @@ export default function App() {
         .font-neue { font-family: 'PP Neue Montreal', 'Inter', sans-serif; }
 
         @keyframes fadeInZoom { 
-          from { opacity: 0; transform: scale(0.95); filter: blur(20px); } 
-          to { opacity: 1; transform: scale(1); filter: blur(0px); } 
+          from { opacity: 0; transform: scale(0.97) translateY(10px); filter: blur(20px); } 
+          to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0px); } 
         }
-        .animate-in { animation: fadeInZoom 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-in { animation: fadeInZoom 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         
         input::placeholder, textarea::placeholder { opacity: 0.5; color: white; }
         
